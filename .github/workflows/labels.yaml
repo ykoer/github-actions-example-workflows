@@ -20,3 +20,28 @@ jobs:
             const labels = context.payload.pull_request.labels.map(label => label.name);
             return labels;
           result-encoding: string
+
+      - name: Determine Validation Type
+        id: determine-validation
+        run: |
+            labels="${{ steps.get-labels.outputs.result }}"
+            echo "PR Labels: $labels"
+
+            if echo "$labels" | grep -q "full validation"; then
+                echo "validation_type=full" >> $GITHUB_OUTPUT
+            elif echo "$labels" | grep -q "quick validation"; then
+                echo "validation_type=quick" >> $GITHUB_OUTPUT
+            else
+                echo "No specific validation label found. Defaulting to full validation."
+                echo "validation_type=full" >> $GITHUB_OUTPUT
+            fi
+
+            cat $GITHUB_OUTPUT
+
+      - name: Run Full Validation
+        if: ${{ steps.determine-validation.outputs.validation_type == 'full' }}
+        run: echo "Running Full Validation..."
+
+      - name: Run Quick Validation
+        if: ${{ steps.determine-validation.outputs.validation_type == 'quick' }}
+        run: echo "Running Quick Validation..."
