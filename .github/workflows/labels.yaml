@@ -1,0 +1,45 @@
+name: Validate and Run Commands Based on PR Labels
+
+on:
+  pull_request:
+    types: [opened, synchronize, labeled, unlabeled]
+
+jobs:
+  validate-and-execute:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get PR Labels
+        id: get-labels
+        uses: snnaplab/get-labels-action@v1.0.1
+
+      - name: Check Labels and Extract Mode
+        id: check-labels
+        run: |
+          validation_mode_labels=$(echo '${{ env.LABELS }}' | jq -r '.[] | select(startswith("sfp_validation_mode:"))' | jq -R -s -c 'split("\n")[:-1]')
+
+          validation_modes=$(echo $validation_mode_labels | jq -r '.[] | split(":")[1]')
+          validation_mode_count=$(echo "$validation_modes" | wc -w)
+
+          if [ $validation_mode_count -eq 0 ]; then
+            echo "No 'sfp_validation_mode' label found. Failing pipeline."
+            exit 1
+          elif [ $validation_mode_count -gt 1 ]; then
+            echo "Multiple 'sfp_validation_mode' labels found. Only one is allowed. Failing pipeline."
+            exit 1
+          fi
+
+          echo "Validation Mode: $validation_modes"
+          echo "validation_mode=$validation_modes" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Run Commands Based on Labels
+        run: |
+          echo "Running commands based on PR labels..."
+
+          echo "Validation mode: ${{ steps.check-labels.outputs.validation_mode }}"
+
+        shell: bash
