@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	readmeTitle              = "Google GitHub Actions - Example Workflows"
+	readmeTitle              = "Google GitHub Actions - Example Workflows - Tag Test"
 	propertiesDirName string = "properties"
 )
 
