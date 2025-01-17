@@ -12,36 +12,57 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Get PR Labels
-        id: get-labels
-        uses: actions/github-script@v6
+    #   - name: Get PR Labels
+    #     id: get-labels
+    #     uses: actions/github-script@v6
+    #     with:
+    #       script: |
+    #         const labels = context.payload.pull_request.labels.map(label => label.name);
+    #         return labels;
+    #       result-encoding: string
+
+    #   - name: Determine Validation Type
+    #     id: determine-validation-mode
+    #     run: |
+    #         labels="${{ steps.get-labels.outputs.result }}"
+
+    #         validation_mode="thorough"
+    #         if echo "$labels" | grep -q "quick validation"; then
+    #             validation_mode="individual"
+    #         fi
+
+    #         echo "validation_mode=$validation_mode" | tee -a $GITHUB_OUTPUT
+
+    #   # Validate source and trigger test, skipping if there are no deployable changes
+    #   - name: 'If deployable changes were made, push source to a scratch org'
+    #     run: |
+    #       labels="${{ steps.get-labels.outputs.result }}"
+
+    #       validation_mode="thorough"
+    #       if echo "$labels" | grep -q "quick validation"; then
+    #             validation_mode="individual"
+    #       fi
+    #       echo $validation_mode
+
+      - name: Get SFP Pool Validation Mode from the PR labels
+        id: sfp-validation-mode
+        uses: actions/github-script@v7
         with:
-          script: |
-            const labels = context.payload.pull_request.labels.map(label => label.name);
-            return labels;
-          result-encoding: string
+            script: |
+                const labels = context.payload.pull_request.labels.map(label => label.name);
+                const hasQuickValidation = labels.includes('quick validation');
+                const hasFullValidation = labels.includes('full validation');
 
-      - name: Determine Validation Type
-        id: determine-validation
+                let validationMode = 'thorough';
+
+                if (hasQuickValidation && !hasFullValidation) {
+                    validationMode = 'individual';
+                }
+
+                console.log(`SFP Validation Mode: ${validationMode}`);
+                return validationMode;
+            result-encoding: string
+
+      - name: Run Commands Based on the Validation Mode
         run: |
-            labels="${{ steps.get-labels.outputs.result }}"
-            echo "PR Labels: $labels"
-
-            if echo "$labels" | grep -q "full validation"; then
-                echo "validation_type=full" >> $GITHUB_OUTPUT
-            elif echo "$labels" | grep -q "quick validation"; then
-                echo "validation_type=quick" >> $GITHUB_OUTPUT
-            else
-                echo "No specific validation label found. Defaulting to full validation."
-                echo "validation_type=full" >> $GITHUB_OUTPUT
-            fi
-
-            cat $GITHUB_OUTPUT
-
-      - name: Run Full Validation
-        if: ${{ steps.determine-validation.outputs.validation_type == 'full' }}
-        run: echo "Running Full Validation..."
-
-      - name: Run Quick Validation
-        if: ${{ steps.determine-validation.outputs.validation_type == 'quick' }}
-        run: echo "Running Quick Validation..."
+          echo "Running commands based on the validation mode: ${{ steps.sfp-validation-mode.outputs.result }}"
