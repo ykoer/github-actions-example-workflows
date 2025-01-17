@@ -49,6 +49,7 @@ jobs:
         uses: actions/github-script@v7
         with:
             script: |
+            
                 const labels = context.payload.pull_request.labels.map(label => label.name);
                 const hasQuickValidation = labels.includes('quick validation');
                 const hasFullValidation = labels.includes('full validation');
