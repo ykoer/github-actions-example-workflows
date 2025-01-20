@@ -38,4 +38,5 @@ jobs:
       - name: Run Quick Validation
         run: |
           echo "Running quick validation:"
+          sleep 300
           # Your quick validation steps here
