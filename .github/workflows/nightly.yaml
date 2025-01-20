@@ -1,0 +1,41 @@
+name: Nightly Build
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  full-validation:
+    runs-on: ubuntu-latest
+    environment: DEV
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tests (controlled via environment variable)
+        run: |
+          echo "Running nightly tests..."
+          echo "TEST_RESULT_OVERRIDE: ${{ vars.TEST_RESULT_OVERRIDE }}"
+          
+          if [ -n "${{ vars.TEST_RESULT_OVERRIDE }}" ]; then
+            if [ "${{ vars.TEST_RESULT_OVERRIDE }}" == "pass" ]; then
+              echo "Tests passed by override (via environment)!"
+              exit 0
+            elif [ "${{ vars.TEST_RESULT_OVERRIDE }}" == "fail" ]; then
+              echo "Tests failed by override (via environment)!"
+              exit 1
+            fi
+          else
+            echo "Random test result mode..."
+            if [ $((RANDOM % 2)) -eq 0 ]; then
+              echo "Tests passed!"
+              exit 0
+            else
+              echo "Tests failed!"
+              exit 1
+            fi
+          fi
+
+      - name: Mark workflow as successful
+        if: success()
+        run: echo "Tests passed successfully!"
