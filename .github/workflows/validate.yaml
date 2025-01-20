@@ -1,69 +1,46 @@
-name: Validate and Run Commands Based on PR Labels
-
+name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, labeled, unlabeled]
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  validate-and-execute:
+  last-full-validation-status:
     runs-on: ubuntu-latest
+    steps:
+      - name: Get Last Full Validation Status
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const { owner, repo } = context.repo;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'nightly.yaml',
+              branch: 'main',
+              status: 'completed'
+            });
+            if (runs.data.workflow_runs.length === 0) {
+              core.setFailed('No successful nightly runs found.');
+            } else if (runs.data.workflow_runs[0].conclusion !== 'success') {
+              core.setFailed(`Last nightly run failed. See: ${runs.data.workflow_runs[0].html_url}`);
+            }
 
+  quick-validation:
+    # needs: last-full-validation-status
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-    #   - name: Get PR Labels
-    #     id: get-labels
-    #     uses: actions/github-script@v6
-    #     with:
-    #       script: |
-    #         const labels = context.payload.pull_request.labels.map(label => label.name);
-    #         return labels;
-    #       result-encoding: string
-
-    #   - name: Determine Validation Type
-    #     id: determine-validation-mode
-    #     run: |
-    #         labels="${{ steps.get-labels.outputs.result }}"
-
-    #         validation_mode="thorough"
-    #         if echo "$labels" | grep -q "quick validation"; then
-    #             validation_mode="individual"
-    #         fi
-
-    #         echo "validation_mode=$validation_mode" | tee -a $GITHUB_OUTPUT
-
-    #   # Validate source and trigger test, skipping if there are no deployable changes
-    #   - name: 'If deployable changes were made, push source to a scratch org'
-    #     run: |
-    #       labels="${{ steps.get-labels.outputs.result }}"
-
-    #       validation_mode="thorough"
-    #       if echo "$labels" | grep -q "quick validation"; then
-    #             validation_mode="individual"
-    #       fi
-    #       echo $validation_mode
-
-      - name: Get SFP Pool Validation Mode from the PR labels
-        id: sfp-validation-mode
-        uses: actions/github-script@v7
-        with:
-            script: |
-            
-                const labels = context.payload.pull_request.labels.map(label => label.name);
-                const hasQuickValidation = labels.includes('quick validation');
-                const hasFullValidation = labels.includes('full validation');
-
-                let validationMode = 'thorough';
-
-                if (hasQuickValidation && !hasFullValidation) {
-                    validationMode = 'individual';
-                }
-
-                console.log(`SFP Validation Mode: ${validationMode}`);
-                return validationMode;
-            result-encoding: string
-
-      - name: Run Commands Based on the Validation Mode
+      - name: Run Quick Validation
         run: |
-          echo "Running commands based on the validation mode: ${{ steps.sfp-validation-mode.outputs.result }}"
+          echo "Running quick validation:"
+          sleep 300
+          # Your quick validation steps here 2
