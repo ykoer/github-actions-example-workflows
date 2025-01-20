@@ -29,7 +29,7 @@ jobs:
             }
 
   quick-validation:
-    needs: last-full-validation-status
+    # needs: last-full-validation-status
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
