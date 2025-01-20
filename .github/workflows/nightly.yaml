@@ -3,23 +3,35 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"
-  
+
 jobs:
   full-validation:
     runs-on: ubuntu-latest
+    environment: DEV
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run tests (random success/failure)
+      - name: Run tests (controlled via environment variable)
         run: |
-          echo "Running nightly tests..."
-          if [ $((RANDOM % 2)) -eq 0 ]; then
-            echo "Tests passed!"
-            exit 0
+          echo "Running nightly tests with environment override..."
+          if [ -n "${{ secrets.TEST_RESULT_OVERRIDE }}" ]; then
+            if [ "${{ secrets.TEST_RESULT_OVERRIDE }}" == "pass" ]; then
+              echo "Tests passed by override (via environment)!"
+              exit 0
+            elif [ "${{ secrets.TEST_RESULT_OVERRIDE }}" == "fail" ]; then
+              echo "Tests failed by override (via environment)!"
+              exit 1
+            fi
           else
-            echo "Tests failed!"
-            exit 0
+            echo "Random test result mode..."
+            if [ $((RANDOM % 2)) -eq 0 ]; then
+              echo "Tests passed!"
+              exit 0
+            else
+              echo "Tests failed!"
+              exit 1
+            fi
           fi
 
       - name: Mark workflow as successful
