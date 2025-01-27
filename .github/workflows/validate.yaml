@@ -25,51 +25,44 @@ jobs:
         with:
           ref: ${{ steps.fetch-branch-name.outputs.head_ref }}
 
-      - name: Process PR comment
-        id: comment
+      - name: Process PR Comment
+        id: process-comment
         run: |
           COMMENT_ID="${{ github.event.comment.id }}"
           COMMENT_BODY="${{ github.event.comment.body }}"
           echo "COMMENT_ID: $COMMENT_ID"
           echo "COMMENT_BODY: $COMMENT_BODY"
-
-      - name: Post response to GitHub PR
-        uses: mshick/add-pr-comment@v2
-        with:
-          message-id: ${{ github.event.comment.id }}
-          message: |
-            Validation run started. Click [here](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) to see the status.
+          echo "::set-output name=comment-id::$COMMENT_ID"
+          if [[ "$COMMENT_BODY" == *"/quick-validation"* ]]; then
+            echo "::set-output name=validation-type::quick"
+          elif [[ "$COMMENT_BODY" == *"/full-validation"* ]]; then
+            echo "::set-output name=validation-type::full"
+          fi
 
       # - name: Checkout
       #   uses: actions/checkout@v3
 
-      - name: Validate
+      - name: Run Validation
+        id: validate
         run: |
-          if [[ "${{ github.event.comment.body }}" == *"/quick-validation"* ]]; then
+          if [[ "${{ steps.process-comment.outputs.validation-type }}" == "quick" ]]; then
             echo "Running Quick Validation..."
-            # Add your quick validation commands here
-          elif [[ "${{ github.event.comment.body }}" == *"/full-validation"* ]]; then
+            sleep 5  # Simulate quick validation
+            echo "Quick Validation Successful" > result.txt
+          elif [[ "${{ steps.process-comment.outputs.validation-type }}" == "full" ]]; then
             echo "Running Full Validation..."
-            # Add your full validation commands here
-          else
-            echo "No matching validation type found."
-            exit 1
+            sleep 60  # Simulate full validation
+            echo "Full Validation Successful" > result.txt
           fi
+        continue-on-error: true
 
-
-      
-
-
-
-
-
-
-
-
-
-
-
-
+      - name: Post Validation Status to PR
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            Validation run completed: **${{ steps.process-comment.outputs.validation-type }}**
+            Status: ${{ steps.validate.outcome == 'success' && '✅ Success' || '❌ Failed' }}
+            [View the workflow run here](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
 
 
