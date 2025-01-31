@@ -36,7 +36,7 @@ jobs:
           sleep 30
 
           # Simulate failure
-          exit 1
+          exit 0
 
       - name: Remove 'needs-validation' label
         if: always()
