@@ -4,8 +4,7 @@ on:
         types: [labeled]
 
 permissions:
-    issues: write       # Allows the token to modify issues (needed for label management)
-    pull-requests: write # Allows the token to interact with pull requests
+    pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -29,9 +28,7 @@ jobs:
           echo "Running validation because 'full validation' label was added"
           # Add your validation logic here (e.g., linting, testing)
 
-          sleep 30
-
-          # Simulate failure
+          sleep 10
           exit 0
 
       - name: Remove label
