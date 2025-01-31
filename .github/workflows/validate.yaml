@@ -33,6 +33,8 @@ jobs:
           echo "Running validation because 'full validation' label was added"
           # Add your validation logic here (e.g., linting, testing)
 
+          sleep 30
+
           # Simulate failure
           exit 1
 
