@@ -1,0 +1,66 @@
+
+on:
+    pull_request:
+        types: [labeled]
+
+permissions:
+    pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
+jobs:
+  validate:
+    name: 'Validate Changed Packages'
+    if: contains(github.event.pull_request.labels.*.name, 'full validation')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Validation Script
+        run: |
+          echo "Running validation because 'full validation' label was added"
+          # Add your validation logic here (e.g., linting, testing)
+
+          sleep 10
+          exit 0
+
+      - name: Remove label
+        if: always()
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          LABEL="full validation"
+
+          # URL-encodes the label by replacing special characters with their percent-encoded equivalents.
+          ENCODED_LABEL=$(printf "%s" "$LABEL" | sed -e 's/ /%20/g' -e 's/:/%3A/g' -e 's/\//%2F/g' -e 's/?/%3F/g' -e 's/&/%26/g' -e 's/=/%3D/g')
+
+          echo "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/labels/$ENCODED_LABEL"
+          curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+               "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/labels/${ENCODED_LABEL}"
+
+#   remove-label:
+#     needs: validate
+#     if: always()  # Ensures this runs even if validation fails
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Remove 'needs-validation' label
+#         run: |
+#           PR_NUMBER=${{ github.event.pull_request.number }}
+#           REPO=${{ github.repository }}
+#           LABEL="full validation"
+#           ENCODED_LABEL=$(printf "%s" "$LABEL" | sed -e 's/ /%20/g' -e 's/:/%3A/g' -e 's/\//%2F/g' -e 's/?/%3F/g' -e 's/&/%26/g' -e 's/=/%3D/g')
+
+#           echo $ENCODED_LABEL
+#           echo "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/labels/$ENCODED_LABEL"
+#           curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#               -H "Accept: application/vnd.github.v3+json" \
+#                "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/labels/${ENCODED_LABEL}"
