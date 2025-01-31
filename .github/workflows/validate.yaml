@@ -1,11 +1,7 @@
 
 on:
     pull_request:
-    #   types: [opened, synchronize, reopened, labeled, unlabeled]
         types: [labeled]
-    pull_request_target:
-        types: [labeled]
-
 
 permissions:
     issues: write       # Allows the token to modify issues (needed for label management)
@@ -38,15 +34,16 @@ jobs:
           # Simulate failure
           exit 0
 
-      - name: Remove 'needs-validation' label
+      - name: Remove label
         if: always()
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           REPO=${{ github.repository }}
           LABEL="full validation"
+
+          # URL-encodes the label by replacing special characters with their percent-encoded equivalents.
           ENCODED_LABEL=$(printf "%s" "$LABEL" | sed -e 's/ /%20/g' -e 's/:/%3A/g' -e 's/\//%2F/g' -e 's/?/%3F/g' -e 's/&/%26/g' -e 's/=/%3D/g')
 
-          echo $ENCODED_LABEL
           echo "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/labels/$ENCODED_LABEL"
           curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
