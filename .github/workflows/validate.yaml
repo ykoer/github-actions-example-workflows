@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate-githubhosted:
+  validate:
     name: 'Validate Changed Packages'
     if: ${{ ! contains(github.event.pull_request.labels.*.name, 'long-run') }}
     timeout-minutes: 640
