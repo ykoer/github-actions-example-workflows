@@ -1,0 +1,161 @@
+# Based on Flxbl (formerly DX@Scale) CI/CD Template for GitHub
+# 
+# To know more about flxbl, visit https://docs.flxbl.io
+# To know more on sfpowerscripts, visit- https://docs.flxbl.io/sfp
+
+# This pipeline is used to validate an incoming change using a scratch org fetched from the CI pool
+
+name: 'PR Validation - Auto Triggered'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - release/**
+
+  workflow_dispatch:
+
+permissions:
+  contents: read # Allows the workflow to read repository contents, required for checkout and other read operations
+  pull-requests: write # This is required to delete a label from the PR
+  
+
+# Ensures that multiple validation job runs do not execute concurrently on the same PR.
+# If a new run is triggered, any in-progress run for the same group is canceled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-githubhosted:
+    name: 'Validate Changed Packages'
+    if: ${{ ! contains(github.event.pull_request.labels.*.name, 'long-run') }}
+    timeout-minutes: 640
+    runs-on: ubuntu-latest
+    # container:
+    #   image: ${{ vars.SFP_IMAGE }}
+    #   credentials:
+    #     username: ${{ github.repository_owner }}
+    #     password: ${{ secrets.ACCESS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # New step: Scan sfdx-project.json for "replaceWithFile" entries and check if files exist
+      - name: 'Check replaceWithFile existence in sfdx-project.json'
+        id: check-replaceWithFile
+        run: |
+          # Extract "replaceWithFile" values from sfdx-project.json and check if the files exist
+        shell: bash
+
+      - name: 'Get all changed files for this PR'
+        id: changed-deployable-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files_ignore_from_source_file: validation-ignore-list.txt
+          separator: ","
+
+      - name: 'Authenticate Dev Hub'
+        run: |
+          echo "Authenticating with Dev Hub"
+
+      # Validate source and trigger test, skipping if there are no deployable changes
+      - name: 'If deployable changes were made, push source to a scratch org'
+        run: |
+          if [ "${{ steps.changed-deployable-files.outputs.all_changed_and_modified_files }}" == "" ]; then
+              echo 'No deployable changes were made. Skipping Scratch Org Validation.'
+              exit 0
+          fi
+          echo "Deploying source to a scratch org"
+      
+      # Upload test results to the GitHub workspace
+      - name: 'Upload test results'
+        # uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        run: |
+          echo "Dummy Uploading test results"
+
+      # If the job is cancelled, release the CI org
+      - name: 'Delete stale CI org'
+        if: ${{ cancelled() }}
+        run: |
+          echo "Deleting stale CI org"
+  
+
+
+  static-check:
+    name: 'See if Static Analysis should run'
+    runs-on: ubuntu-latest
+
+    outputs:
+      all-changed-files: ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get all changed files for this PR
+        id: changed-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files_ignore_from_source_file: changed-files-ignore-list.txt
+          separator: ","
+
+      - name: List changed files, skipping this job if there are no files to analyze
+        run: |
+          if [ "${{ steps.changed-files.outputs.all_changed_and_modified_files }}" == "" ]; then
+            echo 'No files eligible for scanning were changed. Skipping Static Analysis.'
+            exit 0
+          else
+            echo ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
+          fi
+
+  static:
+    name: 'Run Static Analysis'
+    runs-on: ubuntu-latest
+    needs: static-check
+    if: needs.static-check.outputs.all-changed-files != ''
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Salesforce CLI & Salesforce Code Analyzer
+        run: |
+          echo "Installing Salesforce CLI & Salesforce Code Analyzer"
+      
+      - name: Run Salesforce Code Analyzer
+        id: run-code-analyzer
+        # uses: forcedotcom/run-code-analyzer@v1
+        run: |
+          echo "Running Salesforce Code Analyzer"
+
+      - name: Check the outputs to determine whether to fail
+        if: |
+          steps.run-code-analyzer.outputs.exit-code > 0 ||
+          steps.run-code-analyzer.outputs.num-sev1-violations > 0
+        run: exit 1
+
+  # validate-package-coverage:
+  #   name: 'Validate Package Metadata Coverage'
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ${{ vars.SFP_IMAGE }}
+  #     credentials:
+  #       username: ${{ github.repository_owner }}
+  #       password: ${{ secrets.ACCESS_TOKEN }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: 'Validate metadata coverage'
+  #       shell: bash
+  #       run: |
+  #         sfdx sfpowerkit:package:valid -n redhatcrm-core -b StandardValueSet
+  
