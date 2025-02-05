@@ -1,0 +1,108 @@
+# Based on Flxbl (formerly DX@Scale) CI/CD Template for GitHub
+# 
+# To know more about flxbl, visit https://docs.flxbl.io
+# To know more on sfpowerscripts, visit- https://docs.flxbl.io/sfp
+
+# This pipeline is used to validate an incoming change using a scratch org fetched from the CI pool
+
+name: 'PR Validation - Auto Triggered'
+
+on:
+  workflow_call:
+    inputs:
+      runner-type:
+        description: 'Runner type (self-hosted or GitHub-hosted)'
+        required: true
+        type: string
+      timeout:
+        description: 'Job timeout in minutes'
+        required: false
+        default: 480
+        type: number
+
+# permissions:
+#   contents: read # Allows the workflow to read repository contents, required for checkout and other read operations
+#   pull-requests: write # This is required to delete a label from the PR
+  
+
+# Ensures that multiple validation job runs do not execute concurrently on the same PR.
+# If a new run is triggered, any in-progress run for the same group is canceled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: 'Validate Changed Packages'
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: ${{ inputs.runner-type == 'github-hosted' && 'ubuntu-latest' || fromJSON('["group=${{ vars.RUNNER_GROUP_LATEST }}", "labels=self-hosted"]') }}
+    # container:
+    #   image: ${{ vars.SFP_IMAGE }}
+    #   credentials:
+    #     username: ${{ github.repository_owner }}
+    #     password: ${{ secrets.ACCESS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # New step: Scan sfdx-project.json for "replaceWithFile" entries and check if files exist
+      - name: 'Check replaceWithFile existence in sfdx-project.json'
+        id: check-replaceWithFile
+        run: |
+          # Extract "replaceWithFile" values from sfdx-project.json and check if the files exist
+        shell: bash
+
+      - name: 'Get all changed files for this PR'
+        id: changed-deployable-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files_ignore_from_source_file: validation-ignore-list.txt
+          separator: ","
+
+      - name: 'Authenticate Dev Hub'
+        run: |
+          echo "Authenticating with Dev Hub"
+
+      # Validate source and trigger test, skipping if there are no deployable changes
+      - name: 'If deployable changes were made, push source to a scratch org'
+        run: |
+          if [ "${{ steps.changed-deployable-files.outputs.all_changed_and_modified_files }}" == "" ]; then
+              echo 'No deployable changes were made. Skipping Scratch Org Validation.'
+              exit 0
+          fi
+          echo "Deploying source to a scratch org"
+      
+      # Upload test results to the GitHub workspace
+      - name: 'Upload test results'
+        # uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        run: |
+          echo "Dummy Uploading test results"
+
+      # If the job is cancelled, release the CI org
+      - name: 'Delete stale CI org'
+        if: ${{ cancelled() }}
+        run: |
+          echo "Deleting stale CI org"
+  
+
+  # validate-package-coverage:
+  #   name: 'Validate Package Metadata Coverage'
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ${{ vars.SFP_IMAGE }}
+  #     credentials:
+  #       username: ${{ github.repository_owner }}
+  #       password: ${{ secrets.ACCESS_TOKEN }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: 'Validate metadata coverage'
+  #       shell: bash
+  #       run: |
+  #         sfdx sfpowerkit:package:valid -n redhatcrm-core -b StandardValueSet
+  
