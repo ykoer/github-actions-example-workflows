@@ -24,57 +24,57 @@ jobs:
       runner-type: 'github-hosted'
       timeout: 480
 
-  static-check:
-    name: 'See if Static Analysis should run'
-    runs-on: ubuntu-latest
+  # static-check:
+  #   name: 'See if Static Analysis should run'
+  #   runs-on: ubuntu-latest
 
-    outputs:
-      all-changed-files: ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
+  #   outputs:
+  #     all-changed-files: ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Get all changed files for this PR
-        id: changed-files
-        uses: tj-actions/changed-files@v42
-        with:
-          files_ignore_from_source_file: changed-files-ignore-list.txt
-          separator: ","
+  #     - name: Get all changed files for this PR
+  #       id: changed-files
+  #       uses: tj-actions/changed-files@v42
+  #       with:
+  #         files_ignore_from_source_file: changed-files-ignore-list.txt
+  #         separator: ","
 
-      - name: List changed files, skipping this job if there are no files to analyze
-        run: |
-          if [ "${{ steps.changed-files.outputs.all_changed_and_modified_files }}" == "" ]; then
-            echo 'No files eligible for scanning were changed. Skipping Static Analysis.'
-            exit 0
-          else
-            echo ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
-          fi
+  #     - name: List changed files, skipping this job if there are no files to analyze
+  #       run: |
+  #         if [ "${{ steps.changed-files.outputs.all_changed_and_modified_files }}" == "" ]; then
+  #           echo 'No files eligible for scanning were changed. Skipping Static Analysis.'
+  #           exit 0
+  #         else
+  #           echo ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
+  #         fi
 
-  static:
-    name: 'Run Static Analysis'
-    runs-on: ubuntu-latest
-    needs: static-check
-    if: needs.static-check.outputs.all-changed-files != ''
+  # static:
+  #   name: 'Run Static Analysis'
+  #   runs-on: ubuntu-latest
+  #   needs: static-check
+  #   if: needs.static-check.outputs.all-changed-files != ''
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Install Salesforce CLI & Salesforce Code Analyzer
-        run: |
-          echo "Installing Salesforce CLI & Salesforce Code Analyzer"
+  #     - name: Install Salesforce CLI & Salesforce Code Analyzer
+  #       run: |
+  #         echo "Installing Salesforce CLI & Salesforce Code Analyzer"
       
-      - name: Run Salesforce Code Analyzer
-        id: run-code-analyzer
-        # uses: forcedotcom/run-code-analyzer@v1
-        run: |
-          echo "Running Salesforce Code Analyzer"
+  #     - name: Run Salesforce Code Analyzer
+  #       id: run-code-analyzer
+  #       # uses: forcedotcom/run-code-analyzer@v1
+  #       run: |
+  #         echo "Running Salesforce Code Analyzer"
 
-      - name: Check the outputs to determine whether to fail
-        if: |
-          steps.run-code-analyzer.outputs.exit-code > 0 ||
-          steps.run-code-analyzer.outputs.num-sev1-violations > 0
-        run: exit 1
+  #     - name: Check the outputs to determine whether to fail
+  #       if: |
+  #         steps.run-code-analyzer.outputs.exit-code > 0 ||
+  #         steps.run-code-analyzer.outputs.num-sev1-violations > 0
+  #       run: exit 1
