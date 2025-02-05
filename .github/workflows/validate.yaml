@@ -34,7 +34,6 @@ concurrency:
 jobs:
   validate:
     name: 'Validate Changed Packages'
-    if: ${{ ! contains(github.event.pull_request.labels.*.name, 'long-run') }}
     timeout-minutes: ${{ inputs.timeout }}
     runs-on: ${{ inputs.runner-type == 'github-hosted' && 'ubuntu-latest' || fromJSON('["group=${{ vars.RUNNER_GROUP_LATEST }}", "labels=self-hosted"]') }}
     # container:
