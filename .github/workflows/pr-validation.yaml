@@ -14,14 +14,14 @@ jobs:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'long-run') }}
     uses: ./.github/workflows/validate.yaml
     with:
-      runner-type: 'github-hosted'
+      runner-type: 'self-hosted'
       timeout: 640
 
   validate-githubhosted:
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'long-run') }}
     uses: ./.github/workflows/validate.yaml
     with:
-      runner-type: 'self-hosted'
+      runner-type: 'github-hosted'
       timeout: 480
 
   # static-check:
