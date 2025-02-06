@@ -90,6 +90,7 @@ jobs:
 
   static-check:
     name: 'See if Static Analysis should run'
+    if: github.event.action != 'labeled'
     runs-on: ubuntu-latest
 
     outputs:
