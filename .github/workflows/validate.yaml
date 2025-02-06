@@ -12,8 +12,11 @@ permissions:
 
 jobs:
   validate:
-    name: 'Validate Changed Packages'
-    if: github.event.action == 'labeled' && contains(github.event.pull_request.labels.*.name, 'run-full-validation')
+    name: 'Validate Changed Packages - Github Hosted'
+    if: >
+      github.event.action == 'labeled' &&
+      contains(github.event.pull_request.labels.*.name, 'run-full-validation') &&
+      !contains(github.event.pull_request.labels.*.name, 'long-run')
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +33,35 @@ jobs:
           sleep 30
           exit 0
 
-      - name: Remove Label using GitHub CLI
+      - name: 'Remove label'
+        run: |
+          curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/run-full-validation"
+  
+  validate-self-hosted:
+    name: 'Validate Changed Packages- Self-Hosted'
+    if: >
+      github.event.action == 'labeled' &&
+      contains(github.event.pull_request.labels.*.name, 'run-full-validation') &&
+      contains(github.event.pull_request.labels.*.name, 'long-run')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Validation Script
+        run: |
+          echo "Running validation because 'full validation' label was added"
+          # Add your validation logic here (e.g., linting, testing)
+
+          sleep 30
+          exit 0
+
+      - name: 'Remove label'
         run: |
           curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
