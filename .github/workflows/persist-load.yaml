@@ -1,0 +1,31 @@
+name: Persist Read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  persist-read:
+    runs-on: ubuntu-latest
+    steps:
+      # - name: Checkout repository
+      #   uses: actions/checkout@v3
+
+      - name: Retrieve last processed run ID
+        run: |
+          LAST_RUN_ID=$(gh variable get --repo $GITHUB_REPOSITORY LAST_PROCESSED_RUN_ID --json value -q ".value")
+          echo "Last processed run ID: $LAST_RUN_ID"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    # steps:
+    #   - name: Download run ID artifact
+    #     uses: actions/download-artifact@v4
+    #     with:
+    #       name: run-id
+          
+    #   - name: Use the run ID
+    #     run: |
+    #       LAST_PROCESSED_RUN_ID=$(cat last_run_id.txt)
+    #       echo "Retrieved run ID: $LAST_PROCESSED_RUN_ID"
+    #       # Use the ID as needed
+    #       echo "LAST_PROCESSED_RUN_ID=$LAST_PROCESSED_RUN_ID" >> $GITHUB_ENV

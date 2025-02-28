@@ -1,0 +1,77 @@
+name: Fetch and Log Workflow Runs
+
+on:
+#   schedule:
+#     - cron: "0 */1 * * *"
+  workflow_dispatch:
+
+jobs:
+  fetch-workflows:
+    runs-on: ubuntu-latest
+    outputs:
+      workflow_ids: ${{ steps.fetch-ids.outputs.workflow_ids }}
+
+    steps:
+      - name: Get Last Processed Run ID
+        id: get-last-processed-run-id
+        run: |
+          LAST_PROCESSED_RUN_ID=$(gh variable get --repo $GITHUB_REPOSITORY LAST_PROCESSED_RUN_ID --json value -q ".value" 2>/dev/null) || echo "Variable not found, defaulting to 0"
+          LAST_PROCESSED_RUN_ID=${LAST_PROCESSED_RUN_ID:-0}
+          echo "LAST_PROCESSED_RUN_ID=${LAST_PROCESSED_RUN_ID:-0}" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Fetch Unprocessed Workflow Runs
+        id: fetch-unprocessed-run-ids
+        run: |
+          HOURS=1
+          # WORKFLOW_IDS=$(gh run list --repo $GITHUB_REPOSITORY --limit 100 --json databaseId,status,createdAt --jq '[.[] | select(.createdAt > (now - (1 * 3600))) | .databaseId] | @json')
+          # LAST_RUN_ID=$(echo $WORKFLOW_IDS | jq '.[-1]')
+
+          WORKFLOW_IDS=$(gh run list --repo $GITHUB_REPOSITORY --limit 100 --json databaseId,createdAt --jq "[.[] | select(.databaseId > $LAST_PROCESSED_RUN_ID) | .databaseId] | @json")
+          LAST_RUN_ID=$(echo $WORKFLOW_IDS | jq '.[-1]')  # Store the highest run ID
+          
+          echo "LAST_RUN_ID=$LAST_RUN_ID" >> $GITHUB_ENV
+          echo "workflow_ids=$WORKFLOW_IDS" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Last Processed Run ID
+        if: success()
+        run: |
+          gh secret set LAST_PROCESSED_ID --repo $GITHUB_REPOSITORY --body "$LAST_RUN_ID"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        
+  process-logs:
+    needs: fetch-workflows
+    runs-on: ubuntu-latest
+    # strategy:
+    #   matrix:
+    #     run_id: ${{ fromJson(needs.fetch-workflows.outputs.workflow_ids || '[]') }}
+    steps:
+        # - run:
+        #     echo ${{ matrix.run_id }}
+      - run: |
+          echo "processing logs...."
+          echo "-----------------"
+          echo ${{ needs.fetch-workflows.outputs.workflow_ids }}
+          echo "-----------------"
+          echo ${{ fromJson(needs.fetch-workflows.outputs.workflow_ids || '[]') }}
+          echo "-----------------"
+
+#   process-logs:
+#     needs: fetch-workflows
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         run_id: ${{ fromJson(needs.fetch-workflows.outputs.workflow_ids) }}
+
+#     steps:
+#       - name: Send Workflow Logs to Splunk
+#         uses: ykoer/github-workflow-splunk-logger@dev
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           splunk_url: ${{ vars.HEC_URL }}
+#           splunk_token: ${{ secrets.HEC_TOKEN }}
+#           run_id: ${{ matrix.run_id }}

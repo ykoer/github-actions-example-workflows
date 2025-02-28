@@ -1,0 +1,30 @@
+name: Persist Write
+
+on:
+  workflow_dispatch:
+
+permissions: write-all
+
+jobs:
+  persist-write:
+    runs-on: ubuntu-latest
+
+    steps:
+      # - name: Checkout repository
+      #   uses: actions/checkout@v3
+
+      - name: Save last processed run ID
+        run: |
+          gh variable set --repo $GITHUB_REPOSITORY LAST_PROCESSED_RUN_ID --body "12345"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    # steps:
+    #   - name: Save run ID to file
+    #     run: echo "12345" > last_run_id.txt
+        
+    #   - name: Upload run ID as artifact
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: run-id
+    #       path: last_run_id.txt

@@ -12,6 +12,8 @@ jobs:
       - name: Send Workflow logs to Splunk
         uses: ykoer/github-workflow-splunk-logger@dev
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           splunk_url: ${{ vars.HEC_URL }}
           splunk_token: ${{ secrets.HEC_TOKEN }}
-          workflow_name: ${{ github.workflow }}
+          run_id: 13309230902
+        
