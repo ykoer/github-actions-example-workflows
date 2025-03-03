@@ -13,7 +13,7 @@ jobs:
         uses: ykoer/github-workflow-splunk-logger@dev
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          splunk_url: ${{ vars.HEC_URL }}
+          splunk_url: ${{ vars.HEC_URL_TEST }}
           splunk_token: ${{ secrets.HEC_TOKEN }}
-          run_id: 13309230902
+          run_id: 13593560361
         
