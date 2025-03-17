@@ -1,0 +1,77 @@
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+    pull-requests: write
+
+# Ensures that multiple validation job runs do not execute concurrently on the same PR.
+# If a new run is triggered, any in-progress run for the same group is canceled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
+jobs:
+  multiple-labels:
+    name: 'Check that only one validation label is applied'
+    if: >
+      contains(fromJSON('["run-full-validation", "run-full-validation-long", "run-quick-validation"]').*,
+      github.event.pull_request.labels.*.name) > 1
+    # if: >
+    #   (contains(github.event.pull_request.labels.*.name, 'run-full-validation') && contains(github.event.pull_request.labels.*.name, 'run-full-validation-long')) ||
+    #   (contains(github.event.pull_request.labels.*.name, 'run-full-validation') && contains(github.event.pull_request.labels.*.name, 'run-quick-validation')) ||
+    #   (contains(github.event.pull_request.labels.*.name, 'run-full-validation-long') && contains(github.event.pull_request.labels.*.name, 'run-quick-validation'))
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          echo "Multiple validation labels detected. Removing labels..."
+          
+          # Remove appropriate labels based on which ones are present
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-full-validation-long') }}" == "true" ]]; then
+            gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-full-validation-long"
+          fi
+
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-full-validation') }}" == "true" ]]; then
+            gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-full-validation"
+          fi
+
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-quick-validation') }}" == "true" ]]; then
+            gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-quick-validation"
+          fi
+          
+          echo "Completed label cleanup"
+          exit 1
+  
+  
+  validate:
+    name: 'Validate Changed Packages - Github Hosted'
+    runs-on: ubuntu-latest
+    if: > 
+      contains(github.event.pull_request.labels.*.name, 'run-full-validation') ||
+      contains(github.event.pull_request.labels.*.name, 'run-quick-validation')
+    # if: >
+    #   contains(github.event.pull_request.labels.*.name, 'run-full-validation') &&
+    #   !contains(github.event.pull_request.labels.*.name, 'run-full-validation-long')
+
+    steps:
+      - name: Run Validation Script
+        run: |
+          echo "Running validation because 'full validation' label was added"
+          # Add your validation logic here (e.g., linting, testing)
+
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-quick-validation') }}" == "true" ]]; then
+            # Perform validation in 'Individual" mode
+            echo "Running Quick Validation..."
+          else
+            Perform validation in 'Thorough' mode
+            echo "Running Full Validation..."
+          fi
+
+          sleep 5
+          exit 0
+  
+  
