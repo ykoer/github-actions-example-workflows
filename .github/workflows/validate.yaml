@@ -15,36 +15,44 @@ concurrency:
 
 jobs:
   multiple-labels:
-    name: 'Check that only one validation label is applied'
-    if: >
-      contains(fromJSON('["run-full-validation", "run-full-validation-long", "run-quick-validation"]').*,
-      github.event.pull_request.labels.*.name) > 1
-    # if: >
-    #   (contains(github.event.pull_request.labels.*.name, 'run-full-validation') && contains(github.event.pull_request.labels.*.name, 'run-full-validation-long')) ||
-    #   (contains(github.event.pull_request.labels.*.name, 'run-full-validation') && contains(github.event.pull_request.labels.*.name, 'run-quick-validation')) ||
-    #   (contains(github.event.pull_request.labels.*.name, 'run-full-validation-long') && contains(github.event.pull_request.labels.*.name, 'run-quick-validation'))
     runs-on: ubuntu-latest
     steps:
-      - env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+      - name: Check Labels
         run: |
-          echo "Multiple validation labels detected. Removing labels..."
+          COUNT=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq '[.[] | select(.name | test("run-full-validation|run-full-validation-long|run-quick-validation"))] | length')
+          if [[ "$COUNT" -gt 1 ]]; then
+            echo "More than one validation label found. Failing the job."
+            exit 1
+          fi
+        shell: bash
+  # multiple-labels:
+  #   name: 'Check that only one validation label is applied'
+  #   if: >
+  #     (contains(github.event.pull_request.labels.*.name, 'run-full-validation') && contains(github.event.pull_request.labels.*.name, 'run-full-validation-long')) ||
+  #     (contains(github.event.pull_request.labels.*.name, 'run-full-validation') && contains(github.event.pull_request.labels.*.name, 'run-quick-validation')) ||
+  #     (contains(github.event.pull_request.labels.*.name, 'run-full-validation-long') && contains(github.event.pull_request.labels.*.name, 'run-quick-validation'))
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - env:
+  #         GH_TOKEN: ${{ secrets.GH_PAT }}
+  #       run: |
+  #         echo "Multiple validation labels detected. Removing labels..."
           
-          # Remove appropriate labels based on which ones are present
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-full-validation-long') }}" == "true" ]]; then
-            gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-full-validation-long"
-          fi
+  #         # Remove appropriate labels based on which ones are present
+  #         if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-full-validation-long') }}" == "true" ]]; then
+  #           gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-full-validation-long"
+  #         fi
 
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-full-validation') }}" == "true" ]]; then
-            gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-full-validation"
-          fi
+  #         if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-full-validation') }}" == "true" ]]; then
+  #           gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-full-validation"
+  #         fi
 
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-quick-validation') }}" == "true" ]]; then
-            gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-quick-validation"
-          fi
+  #         if [[ "${{ contains(github.event.pull_request.labels.*.name, 'run-quick-validation') }}" == "true" ]]; then
+  #           gh pr edit ${{ github.event.pull_request.number }} --repo $GITHUB_REPOSITORY --remove-label "run-quick-validation"
+  #         fi
           
-          echo "Completed label cleanup"
-          exit 1
+  #         echo "Completed label cleanup"
+  #         exit 1
   
   
   validate:
@@ -67,7 +75,7 @@ jobs:
             # Perform validation in 'Individual" mode
             echo "Running Quick Validation..."
           else
-            Perform validation in 'Thorough' mode
+            # Perform validation in 'Thorough' mode
             echo "Running Full Validation..."
           fi
 
