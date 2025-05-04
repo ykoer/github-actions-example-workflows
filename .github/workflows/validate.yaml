@@ -1,0 +1,41 @@
+name: PR Validation
+on:
+  pull_request:
+    types: [opened, synchronize, labeled, unlabeled]
+    branches:
+      - main
+
+jobs:
+  check-full-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Full Validation Status
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const { owner, repo } = context.repo;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'nightly.yaml',
+              branch: 'main',
+              status: 'completed'
+            });
+            if (runs.data.workflow_runs.length === 0) {
+              core.setFailed('No successful nightly runs found.');
+            } else if (runs.data.workflow_runs[0].conclusion !== 'success') {
+              core.setFailed(`Last nightly run failed. See: ${runs.data.workflow_runs[0].html_url}`);
+            }
+
+  quick-validation:
+    needs: check-full-validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Quick Validation
+        run: |
+          echo "Running quick validation:"
+          # Your quick validation steps here
